@@ -11,7 +11,7 @@ const transporter = nodemailer.createTransport({
   secure: false, // true for 465, false for other ports
   auth: {
     user: 'robo.ai.96@gmail.com',
-    pass: 'btla aglb cjkk uqrv', // use environment variables in production
+    pass: 'btla aglb cjkk uqrv', // Remove this before commiting to a public repository
   },
 });
 
@@ -23,8 +23,8 @@ const htmlBody = fs.readFileSync(
 function sendCampaignLeadEmail(campaign_lead, callback) {
   const mailOptions = {
     from: 'robo.ai.96@gmail.com',
-    // to: campaign_lead.email,
-    to: 'a19101996@gmail.com',
+    to: campaign_lead.email,
+    // to: 'jayrajawat5@gmail.com',
     subject: 'Introduction to Asha Corporation – Your One-Stop Solution for Lubrication & Chemicals',
     html: htmlBody.replace('{{first_name|there}}', campaign_lead.contact_person?campaign_lead.contact_person:'Sir/Madam')
     .replace('{{company_name}}', campaign_lead.name?campaign_lead.name:'your company'),
@@ -70,6 +70,8 @@ function sendCampaignLeadEmail(campaign_lead, callback) {
     );
   });
 }
+
+
 
 module.exports = {
   sendCampaignLeadEmail

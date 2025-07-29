@@ -77,10 +77,17 @@ function addCampaign(campaign, filter, callback) {
       if (err) return callback(err);
       const campaignId = this.lastID;
 
+      // Support manual selection of leads
+      if (filter && Array.isArray(filter.selectedLeadIds) && filter.selectedLeadIds.length > 0) {
+        addLeadsToCampaign(campaignId, filter.selectedLeadIds, callback);
+        return;
+      }
+
       // Remove page and pageSize from filter before fetching leads
       const filterForLeads = { ...(filter || {}) };
       delete filterForLeads.page;
       delete filterForLeads.pageSize;
+      delete filterForLeads.selectedLeadIds;
 
       leads.getAllLeads(filterForLeads, (err, result) => {
         if (err) return callback(err);

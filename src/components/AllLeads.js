@@ -1,83 +1,84 @@
 import React, { useEffect, useState } from 'react';
 import { DataGrid } from '@mui/x-data-grid';
-import { Box, TextField, Button, Typography, IconButton } from '@mui/material';
+import { Box, TextField, Button, Typography, IconButton, Tabs, Tab } from '@mui/material';
 import AddLeadDialog from './AddLeadDialog';
 import UploadLeadsDialog from './UploadLeadsDialog';
 import EditIcon from '@mui/icons-material/Edit';
 import EditLeadDialog from './EditLeadDialog';
 
 export default function Leads() {
-  const [leads, setLeads] = useState([]);
-  const [total, setTotal] = useState(0);
+  const [tab, setTab] = useState(0); // 0: Survey Leads, 1: General Leads
+
+  // State for survey leads
+  const [surveyLeads, setSurveyLeads] = useState([]);
+  const [surveyTotal, setSurveyTotal] = useState(0);
+  const [surveyPage, setSurveyPage] = useState(1);
+  const [surveyPageSize, setSurveyPageSize] = useState(20);
+
+  // State for general leads
+  const [generalLeads, setGeneralLeads] = useState([]);
+  const [generalTotal, setGeneralTotal] = useState(0);
+  const [generalPage, setGeneralPage] = useState(1);
+  const [generalPageSize, setGeneralPageSize] = useState(20);
+
+  // Shared state
   const [filter, setFilter] = useState('');
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
   const [openAdd, setOpenAdd] = useState(false);
   const [openUpload, setOpenUpload] = useState(false);
-
-  // Edit dialog state
   const [editLead, setEditLead] = useState(null);
-  const [editValues, setEditValues] = useState({ email: '', phone: '', contact_person: '' });
-  const [editLoading, setEditLoading] = useState(false);
 
+  // Fetch survey leads
   useEffect(() => {
-    fetchLeads();
-  }, [filter, page, pageSize]);
+    fetchSurveyLeads();
+    // eslint-disable-next-line
+  }, [filter, surveyPage, surveyPageSize]);
 
-  async function fetchLeads() {
+  // Fetch general leads
+  useEffect(() => {
+    fetchGeneralLeads();
+    // eslint-disable-next-line
+  }, [filter, generalPage, generalPageSize]);
+
+  async function fetchSurveyLeads() {
     const options = {
       search: filter,
-      page,
-      pageSize,
+      page: surveyPage,
+      pageSize: surveyPageSize,
+      isSurveyLead: true,
     };
     const result = await window.electronAPI.getAllLeads(options);
     if (result.success) {
-      setLeads(result.leads);
-      setTotal(result.total);
+      setSurveyLeads(result.leads);
+      setSurveyTotal(result.total);
     }
   }
 
-  // Filter and sort logic
-  const filteredLeads = leads
-    .filter(lead => lead.name.toLowerCase().includes(filter.toLowerCase()));
+  async function fetchGeneralLeads() {
+    const options = {
+      search: filter,
+      page: generalPage,
+      pageSize: generalPageSize,
+      isSurveyLead: false,
+    };
+    const result = await window.electronAPI.getAllLeads(options);
+    if (result.success) {
+      setGeneralLeads(result.leads);
+      setGeneralTotal(result.total);
+    }
+  }
 
   // Open edit dialog for a lead
   const handleEditClick = (lead) => {
     setEditLead(lead);
-    setEditValues({
-      email: lead.email || '',
-      phone: lead.phone || '',
-      contact_person: lead.contact_person || '',
-    });
   };
 
-  // Handle edit field changes
-  const handleEditChange = (field) => (e) => {
-    setEditValues({ ...editValues, [field]: e.target.value });
-  };
-
-  // Save edited lead
-  const handleEditSave = async () => {
-    if (!editLead) return;
-    setEditLoading(true);
-    const updatedLead = {
-      ...editLead,
-      email: editValues.email,
-      phone: editValues.phone,
-      contact_person: editValues.contact_person,
-    };
-    const result = await window.electronAPI.addLead(updatedLead); // upsert logic
-    setEditLoading(false);
-    if (result.success) {
-      setEditLead(null);
-      fetchLeads();
-    }
-    // Optionally handle error
-  };
-
-  // Cancel edit
-  const handleEditCancel = () => {
+  // Close edit dialog and refresh leads if updated
+  const handleEditClose = (updated) => {
     setEditLead(null);
+    if (updated) {
+      fetchSurveyLeads();
+      fetchGeneralLeads();
+    }
   };
 
   const columns = [
@@ -126,47 +127,80 @@ export default function Leads() {
           Upload Excel
         </Button>
       </Box>
+      <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ mb: 2 }}>
+        <Tab label="Survey Leads" />
+        <Tab label="General Leads" />
+      </Tabs>
       <Box sx={{ display: 'flex', flexDirection: 'column', height: 400, width: '100%' }}>
-        <DataGrid
-          rows={filteredLeads.map(lead => ({
-            id: lead.id,
-            name: lead.name,
-            email: lead.email,
-            phone: lead.phone,
-            contactPerson: lead.contact_person,
-            area: lead.area,
-            contact_person: lead.contact_person, // for edit dialog
-          }))}
-          columns={columns}
-          pageSize={pageSize}
-          rowsPerPageOptions={[5, 10, 20]}
-          pagination
-          paginationMode="server"
-          rowCount={total}
-          onPageChange={newPage => setPage(newPage)}
-          onPageSizeChange={newPageSize => setPageSize(newPageSize)}
-          disableSelectionOnClick
-        />
+        {tab === 0 && (
+          <DataGrid
+            rows={surveyLeads.map(lead => ({
+              id: lead.id,
+              name: lead.name,
+              email: lead.email,
+              phone: lead.phone,
+              contactPerson: lead.contact_person,
+              area: lead.area,
+              contact_person: lead.contact_person,
+              isSurveyLead: lead.isSurveyLead,
+            }))}
+            columns={columns}
+            pageSize={surveyPageSize}
+            rowsPerPageOptions={[5, 10, 20]}
+            pagination
+            paginationMode="server"
+            rowCount={surveyTotal}
+            page={surveyPage}
+            onPageChange={newPage => setSurveyPage(newPage)}
+            onPageSizeChange={newPageSize => setSurveyPageSize(newPageSize)}
+            disableSelectionOnClick
+          />
+        )}
+        {tab === 1 && (
+          <DataGrid
+            rows={generalLeads.map(lead => ({
+              id: lead.id,
+              name: lead.name,
+              email: lead.email,
+              phone: lead.phone,
+              contactPerson: lead.contact_person,
+              area: lead.area,
+              contact_person: lead.contact_person,
+              isSurveyLead: lead.isSurveyLead,
+            }))}
+            columns={columns}
+            pageSize={generalPageSize}
+            rowsPerPageOptions={[5, 10, 20]}
+            pagination
+            paginationMode="server"
+            rowCount={generalTotal}
+            page={generalPage}
+            onPageChange={newPage => setGeneralPage(newPage)}
+            onPageSizeChange={newPageSize => setGeneralPageSize(newPageSize)}
+            disableSelectionOnClick
+          />
+        )}
       </Box>
       <AddLeadDialog
         open={openAdd}
         onClose={() => setOpenAdd(false)}
-        onLeadAdded={fetchLeads}
+        onLeadAdded={() => {
+          fetchSurveyLeads();
+          fetchGeneralLeads();
+        }}
       />
       <UploadLeadsDialog
         open={openUpload}
         onClose={() => setOpenUpload(false)}
-        onLeadsUploaded={fetchLeads}
+        onLeadsUploaded={() => {
+          fetchSurveyLeads();
+          fetchGeneralLeads();
+        }}
       />
-
-      {/* Edit Lead Dialog */}
       <EditLeadDialog
         open={!!editLead}
-        editValues={editValues}
-        editLoading={editLoading}
-        onChange={handleEditChange}
-        onCancel={handleEditCancel}
-        onSave={handleEditSave}
+        lead={editLead}
+        onClose={handleEditClose}
       />
     </Box>
   );

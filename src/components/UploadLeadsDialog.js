@@ -13,6 +13,7 @@ export default function UploadLeadsDialog({ open, onClose, onLeadsUploaded }) {
     try {
       const leads = await processLeadsExcel(file);
       for (const lead of leads) {
+        lead.isSurveyLead = false; // Ensure isSurveyLead is set to false
         await window.electronAPI.addLead(lead);
       }
       onLeadsUploaded();
@@ -39,7 +40,7 @@ export default function UploadLeadsDialog({ open, onClose, onLeadsUploaded }) {
       <DialogTitle>Upload Leads Excel</DialogTitle>
       <DialogContent>
         <Typography variant="body2" sx={{ mb: 2 }}>
-          Upload an Excel file (.xlsx or .xls) with columns: name, address, phone, mobile, email, contact_person, area, details (JSON).
+          Upload an Excel file (.xlsx or .xls) with columns: name, address, phone, mobile, email, contact_person, area.
         </Typography>
         <input
           type="file"

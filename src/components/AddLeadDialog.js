@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Dialog, DialogTitle, DialogContent, DialogActions, TextField, Button } from '@mui/material';
+import { Dialog, DialogTitle, DialogContent, DialogActions, TextField, Button, FormControlLabel, Checkbox } from '@mui/material';
 
 export default function AddLeadDialog({ open, onClose, onLeadAdded }) {
   const [newLead, setNewLead] = useState({
@@ -10,18 +10,11 @@ export default function AddLeadDialog({ open, onClose, onLeadAdded }) {
     email: '',
     contact_person: '',
     area: 'N/A',
-    details: ''
+    isSurveyLead: false
   });
 
   const handleAddLead = async () => {
-    let detailsObj = {};
-    try {
-      detailsObj = newLead.details ? JSON.parse(newLead.details) : {};
-    } catch (e) {
-      alert('Other Details must be valid JSON');
-      return;
-    }
-    const leadToAdd = { ...newLead, details: detailsObj };
+    const leadToAdd = { ...newLead, details: {} };
     const result = await window.electronAPI.addLead(leadToAdd);
     if (result.success) {
       onLeadAdded();
@@ -40,7 +33,7 @@ export default function AddLeadDialog({ open, onClose, onLeadAdded }) {
       email: '',
       area: 'N/A',
       contact_person: '',
-      details: ''
+      isSurveyLead: false
     });
     onClose();
   };
@@ -86,11 +79,14 @@ export default function AddLeadDialog({ open, onClose, onLeadAdded }) {
           onChange={e => setNewLead({ ...newLead, area: e.target.value })}
           placeholder='e.g. Savali'
         />
-        <TextField
-          label="Extra Details (JSON)"
-          value={newLead.details}
-          onChange={e => setNewLead({ ...newLead, details: e.target.value })}
-          placeholder='e.g. {"industry": "Tech", "notes": "Follow up next week"}'
+        <FormControlLabel
+          control={
+            <Checkbox
+              checked={newLead.isSurveyLead}
+              onChange={e => setNewLead({ ...newLead, isSurveyLead: e.target.checked })}
+            />
+          }
+          label="Is Survey Lead"
         />
       </DialogContent>
       <DialogActions>
