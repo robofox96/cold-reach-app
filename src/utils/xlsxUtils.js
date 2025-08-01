@@ -8,16 +8,45 @@ export async function processLeadsExcel(file) {
   const rows = XLSX.utils.sheet_to_json(sheet);
 
   // Expecting columns: name, address, phone, mobile, email, contact_person, area, details (as JSON string or blank)
-  return rows.map(row => ({
-    name: row.name || '',
-    address: row.address || '',
-    phone: row.phone || '',
-    mobile: row.mobile || '',
-    email: row.email || '',
-    contact_person: row.contact_person || '',
-    area: row.area || 'N/A',
-    details: row.details ? JSON.parse(row.details) : {}
-  }));
+  //filter rows with no or blank name
+  return rows.filter(row => row.Name && row.Name.trim()).map(row => {
+    if (row.Details && typeof row.Details === 'string') {
+      try {
+        row.Details = JSON.parse(row.Details);
+      } catch (e) {
+        console.error('Invalid JSON in Details column:', e);
+        row.Details = {};
+      }
+    } else {  
+      row.Details = {};
+    }
+
+    // Helper to clean phone/mobile values
+    function cleanNumber(val) {
+      if (val === undefined || val === null) return '';
+      let str = String(val).trim();
+      // Remove trailing .0 if present (from Excel number conversion)
+      if (/^\d+\.0$/.test(str)) {
+        str = str.replace(/\.0$/, '');
+      }
+      // Remove scientific notation if present
+      if (/e\+/.test(str)) {
+        const num = Number(str);
+        if (!isNaN(num)) str = num.toFixed(0);
+      }
+      return str;
+    }
+
+    // Ensure all fields are present and set defaults if missing
+    row.name = row.Name || '';
+    row.address = row.Address || '';
+    row.phone = cleanNumber(row.Phone);
+    row.mobile = cleanNumber(row.Mobile);
+    row.email = row.Email || '';
+    row.contact_person = row.Contact_Person || '';
+    row.area = row.Area ? row.Area.trim().toUpperCase() : 'N/A';
+    return row;
+  });
 }
 
 export function exportLeadsToXLSX(leads, filename = 'campaign_leads.xlsx') {

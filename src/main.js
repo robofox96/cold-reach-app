@@ -175,5 +175,14 @@ ipcMain.handle('getAllLeadsForCampaignExport', async (event, campaignId) => {
   });
 });
 
+ipcMain.handle('deleteLead', async (event, leadId) => {
+  return new Promise((resolve) => {
+    leads.deleteLead(leadId, (err, result) => {
+      if (err) resolve({ success: false, error: err.message });
+      else resolve({ success: true, ...result });
+    });
+  });
+});
+
 // In this file you can include the rest of your app's specific main process
 // code. You can also put them in separate files and import them here.

@@ -9,6 +9,7 @@ export default function EditLeadDialog({
   const [editValues, setEditValues] = useState({
     email: '',
     phone: '',
+    mobile: '', // <-- Add mobile to state
     contact_person: '',
     area: '',
     isSurveyLead: false,
@@ -20,6 +21,7 @@ export default function EditLeadDialog({
       setEditValues({
         email: lead.email || '',
         phone: lead.phone || '',
+        mobile: lead.mobile || '', // <-- Initialize mobile
         contact_person: lead.contact_person || '',
         area: lead.area || '',
         isSurveyLead: !!lead.isSurveyLead,
@@ -42,6 +44,7 @@ export default function EditLeadDialog({
       ...lead,
       email: editValues.email,
       phone: editValues.phone,
+      mobile: editValues.mobile, // <-- Save mobile
       contact_person: editValues.contact_person,
       area: editValues.area,
       isSurveyLead: editValues.isSurveyLead,
@@ -77,6 +80,13 @@ export default function EditLeadDialog({
           margin="normal"
           value={editValues.phone}
           onChange={handleChange('phone')}
+        />
+        <TextField
+          label="Mobile"
+          fullWidth
+          margin="normal"
+          value={editValues.mobile}
+          onChange={handleChange('mobile')}
         />
         <TextField
           label="Contact Person"

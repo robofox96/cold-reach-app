@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { DataGrid } from '@mui/x-data-grid';
-import { Box, TextField, Button, Typography, IconButton, Tabs, Tab } from '@mui/material';
+import { Box, TextField, Button, Typography, IconButton, Tabs, Tab, Tooltip } from '@mui/material';
 import AddLeadDialog from './AddLeadDialog';
 import UploadLeadsDialog from './UploadLeadsDialog';
 import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
 import EditLeadDialog from './EditLeadDialog';
 
 export default function Leads() {
@@ -12,14 +13,12 @@ export default function Leads() {
   // State for survey leads
   const [surveyLeads, setSurveyLeads] = useState([]);
   const [surveyTotal, setSurveyTotal] = useState(0);
-  const [surveyPage, setSurveyPage] = useState(1);
-  const [surveyPageSize, setSurveyPageSize] = useState(20);
+  const [surveyPagination, setSurveyPagination] = useState({ page: 0, pageSize: 20 });
 
   // State for general leads
   const [generalLeads, setGeneralLeads] = useState([]);
   const [generalTotal, setGeneralTotal] = useState(0);
-  const [generalPage, setGeneralPage] = useState(1);
-  const [generalPageSize, setGeneralPageSize] = useState(20);
+  const [generalPagination, setGeneralPagination] = useState({ page: 0, pageSize: 20 });
 
   // Shared state
   const [filter, setFilter] = useState('');
@@ -31,19 +30,19 @@ export default function Leads() {
   useEffect(() => {
     fetchSurveyLeads();
     // eslint-disable-next-line
-  }, [filter, surveyPage, surveyPageSize]);
+  }, [filter, surveyPagination.page, surveyPagination.pageSize]);
 
   // Fetch general leads
   useEffect(() => {
     fetchGeneralLeads();
     // eslint-disable-next-line
-  }, [filter, generalPage, generalPageSize]);
+  }, [filter, generalPagination.page, generalPagination.pageSize]);
 
   async function fetchSurveyLeads() {
     const options = {
       search: filter,
-      page: surveyPage,
-      pageSize: surveyPageSize,
+      page: surveyPagination.page + 1, // DataGrid is 0-based, backend expects 1-based
+      pageSize: surveyPagination.pageSize,
       isSurveyLead: true,
     };
     const result = await window.electronAPI.getAllLeads(options);
@@ -56,8 +55,8 @@ export default function Leads() {
   async function fetchGeneralLeads() {
     const options = {
       search: filter,
-      page: generalPage,
-      pageSize: generalPageSize,
+      page: generalPagination.page + 1, // DataGrid is 0-based, backend expects 1-based
+      pageSize: generalPagination.pageSize,
       isSurveyLead: false,
     };
     const result = await window.electronAPI.getAllLeads(options);
@@ -70,6 +69,19 @@ export default function Leads() {
   // Open edit dialog for a lead
   const handleEditClick = (lead) => {
     setEditLead(lead);
+  };
+
+  // Delete a lead
+  const handleDeleteClick = async (leadId) => {
+    if (window.confirm('Are you sure you want to delete this lead?')) {
+      const result = await window.electronAPI.deleteLead(leadId);
+      if (result.success) {
+        fetchSurveyLeads();
+        fetchGeneralLeads();
+      } else {
+        alert('Failed to delete lead: ' + (result.error || 'Unknown error'));
+      }
+    }
   };
 
   // Close edit dialog and refresh leads if updated
@@ -85,24 +97,39 @@ export default function Leads() {
     { field: 'name', headerName: 'Name', flex: 1 },
     { field: 'email', headerName: 'Email', flex: 1 },
     { field: 'phone', headerName: 'Phone', flex: 1 },
+    { field: 'mobile', headerName: 'Mobile', flex: 1 },
     { field: 'contactPerson', headerName: 'Contact Person', flex: 1 },
     { field: 'area', headerName: 'Area', flex: 1 },
     {
       field: 'actions',
-      headerName: 'Edit',
+      headerName: 'Actions',
       sortable: false,
       filterable: false,
       align: 'center',
       headerAlign: 'center',
-      width: 80,
+      width: 120,
       renderCell: (params) => (
-        <IconButton
-          aria-label="edit"
-          size="small"
-          onClick={() => handleEditClick(params.row)}
-        >
-          <EditIcon />
-        </IconButton>
+        <>
+          <Tooltip title="Edit">
+            <IconButton
+              aria-label="edit"
+              size="small"
+              onClick={() => handleEditClick(params.row)}
+            >
+              <EditIcon />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="Delete">
+            <IconButton
+              aria-label="delete"
+              size="small"
+              color="error"
+              onClick={() => handleDeleteClick(params.row.id)}
+            >
+              <DeleteIcon />
+            </IconButton>
+          </Tooltip>
+        </>
       ),
     },
   ];
@@ -131,7 +158,7 @@ export default function Leads() {
         <Tab label="Survey Leads" />
         <Tab label="General Leads" />
       </Tabs>
-      <Box sx={{ display: 'flex', flexDirection: 'column', height: 400, width: '100%' }}>
+      <Box sx={{ display: 'flex', flexDirection: 'column', width: '100%', flex: 1, minHeight: 0, height: '100%' }}>
         {tab === 0 && (
           <DataGrid
             rows={surveyLeads.map(lead => ({
@@ -139,20 +166,22 @@ export default function Leads() {
               name: lead.name,
               email: lead.email,
               phone: lead.phone,
+              mobile: lead.mobile,
               contactPerson: lead.contact_person,
               area: lead.area,
               contact_person: lead.contact_person,
               isSurveyLead: lead.isSurveyLead,
             }))}
             columns={columns}
-            pageSize={surveyPageSize}
-            rowsPerPageOptions={[5, 10, 20]}
             pagination
             paginationMode="server"
             rowCount={surveyTotal}
-            page={surveyPage}
-            onPageChange={newPage => setSurveyPage(newPage)}
-            onPageSizeChange={newPageSize => setSurveyPageSize(newPageSize)}
+            pageSize={surveyPagination.pageSize}
+            page={surveyPagination.page}
+            onPaginationModelChange={({ page, pageSize }) =>
+              setSurveyPagination({ page, pageSize })
+            }
+            rowsPerPageOptions={[5, 10, 20]}
             disableSelectionOnClick
           />
         )}
@@ -163,20 +192,22 @@ export default function Leads() {
               name: lead.name,
               email: lead.email,
               phone: lead.phone,
+              mobile: lead.mobile,
               contactPerson: lead.contact_person,
               area: lead.area,
               contact_person: lead.contact_person,
               isSurveyLead: lead.isSurveyLead,
             }))}
             columns={columns}
-            pageSize={generalPageSize}
-            rowsPerPageOptions={[5, 10, 20]}
             pagination
             paginationMode="server"
             rowCount={generalTotal}
-            page={generalPage}
-            onPageChange={newPage => setGeneralPage(newPage)}
-            onPageSizeChange={newPageSize => setGeneralPageSize(newPageSize)}
+            pageSize={generalPagination.pageSize}
+            page={generalPagination.page}
+            onPaginationModelChange={({ page, pageSize }) =>
+              setGeneralPagination({ page, pageSize })
+            }
+            rowsPerPageOptions={[5, 10, 20]}
             disableSelectionOnClick
           />
         )}

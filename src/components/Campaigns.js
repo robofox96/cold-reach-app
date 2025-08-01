@@ -1,26 +1,50 @@
 import React, { useEffect, useState } from 'react';
-import { Box, Button, Typography, IconButton } from '@mui/material';
+import { Box, Button, Typography, IconButton, MenuItem, TextField } from '@mui/material';
 import { DataGrid } from '@mui/x-data-grid';
 import { Link, useNavigate } from 'react-router-dom';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 
+const STATUS_OPTIONS = [
+  { value: '', label: 'All Statuses' },
+  { value: 'ACTIVE', label: 'Active' },
+  { value: 'DRAFT', label: 'Draft' },
+  { value: 'STOPPED', label: 'Stopped' },
+  { value: 'FINISHED', label: 'Finished' },
+];
+
+const TYPE_OPTIONS = [
+  { value: '', label: 'All Types' },
+  { value: 'EMAIL', label: 'Email' },
+  { value: 'SMS', label: 'SMS' },
+  { value: 'WHATSAPP', label: 'WhatsApp' },
+];
+
 export default function Campaigns() {
   const [campaigns, setCampaigns] = useState([]);
+  const [totalCampaigns, setTotalCampaigns] = useState(0);
+  const [pagination, setPagination] = useState({ page: 0, pageSize: 10 });
+  const [statusFilter, setStatusFilter] = useState('');
+  const [typeFilter, setTypeFilter] = useState('');
   const navigate = useNavigate();
 
   useEffect(() => {
     fetchCampaigns();
-  }, []);
+    // eslint-disable-next-line
+  }, [pagination.page, pagination.pageSize, statusFilter, typeFilter]);
 
   async function fetchCampaigns() {
     const result = await window.electronAPI.getAllCampaigns({
-      page: 0,
-      pageSize: 100
+      page: pagination.page + 1, // DataGrid is 0-based, backend expects 1-based
+      pageSize: pagination.pageSize,
+      status: statusFilter,
+      type: typeFilter,
     });
     if (result.success) {
       setCampaigns(Array.isArray(result.campaigns) ? result.campaigns : []);
+      setTotalCampaigns(result.total || 0);
     } else {
       setCampaigns([]);
+      setTotalCampaigns(0);
       console.error('Failed to fetch campaigns:', result.error);
     }
   }
@@ -88,20 +112,59 @@ export default function Campaigns() {
       <Typography variant="h5" gutterBottom>
         Campaigns
       </Typography>
-      <Button
-        component={Link}
-        to="/campaigns/new"
-        variant="contained"
-        color="primary"
-        sx={{ mb: 2 }}
-      >
-        Add New Campaign
-      </Button>
-      <Box sx={{ height: 500, width: '100%' }}>
+      <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
+        <TextField
+          select
+          label="Status"
+          value={statusFilter}
+          onChange={e => {
+            setPagination({ ...pagination, page: 0 }); // Reset to first page on filter change
+            setStatusFilter(e.target.value);
+          }}
+          size="small"
+          sx={{ minWidth: 140 }}
+        >
+          {STATUS_OPTIONS.map(opt => (
+            <MenuItem key={opt.value} value={opt.value}>{opt.label}</MenuItem>
+          ))}
+        </TextField>
+        <TextField
+          select
+          label="Type"
+          value={typeFilter}
+          onChange={e => {
+            setPagination({ ...pagination, page: 0 }); // Reset to first page on filter change
+            setTypeFilter(e.target.value);
+          }}
+          size="small"
+          sx={{ minWidth: 140 }}
+        >
+          {TYPE_OPTIONS.map(opt => (
+            <MenuItem key={opt.value} value={opt.value}>{opt.label}</MenuItem>
+          ))}
+        </TextField>
+        <Button
+          component={Link}
+          to="/campaigns/new"
+          variant="contained"
+          color="primary"
+          sx={{ ml: 'auto' }}
+        >
+          Add New Campaign
+        </Button>
+      </Box>
+      <Box sx={{ width: '100%', flex: 1, minHeight: 0 }}>
         <DataGrid
           rows={campaigns.map(c => ({ ...c, id: c.id }))}
           columns={columns}
-          pageSize={10}
+          pagination
+          paginationMode="server"
+          rowCount={totalCampaigns}
+          pageSize={pagination.pageSize}
+          page={pagination.page}
+          onPaginationModelChange={({ page, pageSize }) =>
+            setPagination({ page, pageSize })
+          }
           rowsPerPageOptions={[10, 20, 50]}
           disableSelectionOnClick
           autoHeight

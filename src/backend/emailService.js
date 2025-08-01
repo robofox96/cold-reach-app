@@ -2,7 +2,7 @@ const fs = require('fs');
 const campaigns = require('./campaigns');
 const nodemailer = require('nodemailer');
 const path = require('path');
-const { app } = require('electron'); // Add this line
+const { app } = require('electron');
 
 // Configure the email transporter
 const transporter = nodemailer.createTransport({
@@ -11,12 +11,25 @@ const transporter = nodemailer.createTransport({
   secure: false, // true for 465, false for other ports
   auth: {
     user: 'robo.ai.96@gmail.com',
-    pass: 'btla aglb cjkk uqrv', // Remove this before commiting to a public repository
+    pass: 'btla aglb cjkk uqrv', // Remove this before pushing to git
   },
 });
 
+// Helper to get static path in both dev and production
+function getStaticPath() {
+  if (process.env.NODE_ENV === 'development') {
+    // In dev, static is at project root
+    return path.join(__dirname, '../../static');
+  } else {
+    // In production, static is in resources
+    return path.join(app.getAppPath(), '.webpack/main/static');
+  }
+}
+
+const staticPath = getStaticPath();
+
 const htmlBody = fs.readFileSync(
-  path.join(app.getAppPath(), 'src/utils/email_template_3.html'),
+  path.join(staticPath, 'email_template_3.html'),
   'utf8'
 );
 
@@ -26,23 +39,23 @@ function sendCampaignLeadEmail(campaign_lead, callback) {
     to: campaign_lead.email,
     // to: 'jayrajawat5@gmail.com',
     subject: 'Introduction to Asha Corporation – Your One-Stop Solution for Lubrication & Chemicals',
-    html: htmlBody.replace('{{first_name|there}}', campaign_lead.contact_person?campaign_lead.contact_person:'Sir/Madam')
-    .replace('{{company_name}}', campaign_lead.name?campaign_lead.name:'your company'),
+    html: htmlBody.replace('{{first_name|there}}', campaign_lead.contact_person ? campaign_lead.contact_person : 'Sir/Madam')
+      .replace('{{company_name}}', campaign_lead.name ? campaign_lead.name : 'your company'),
     attachments: [
-        // {
-        //     filename: "Brochure.pdf",
-        //     path: path.join(app.getAppPath(), 'src/utils/brochure1.pdf')
-        // },
-        {
-            filename: "servo2.png",
-            path: path.join(app.getAppPath(), 'src/utils/servo2.png'),
-            cid: "servo2@asha.com"
-        },
-        {
-            filename: "servo3.png",
-            path: path.join(app.getAppPath(), 'src/utils/servo3.png'),
-            cid: "servo3@asha.com"
-        }
+      // {
+      //   filename: "Brochure.pdf",
+      //   path: path.join(staticPath, 'brochure1.pdf')
+      // },
+      {
+        filename: "servo2.png",
+        path: path.join(staticPath, 'servo2.png'),
+        cid: "servo2@asha.com"
+      },
+      {
+        filename: "servo3.png",
+        path: path.join(staticPath, 'servo3.png'),
+        cid: "servo3@asha.com"
+      }
     ]
   };
 
@@ -70,8 +83,6 @@ function sendCampaignLeadEmail(campaign_lead, callback) {
     );
   });
 }
-
-
 
 module.exports = {
   sendCampaignLeadEmail

@@ -6,6 +6,7 @@ import SendIcon from '@mui/icons-material/Send';
 import ReplayIcon from '@mui/icons-material/Replay';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import StopIcon from '@mui/icons-material/Stop';
+import RefreshIcon from '@mui/icons-material/Refresh';
 import { useParams, useNavigate } from 'react-router-dom';
 import { exportLeadsToXLSX } from '../utils/xlsxUtils';
 import CircularProgress from '@mui/material/CircularProgress';
@@ -21,14 +22,12 @@ export default function CampaignDetailsPage() {
   // To Send
   const [leadsToSend, setLeadsToSend] = useState([]);
   const [totalLeadsToSend, setTotalLeadsToSend] = useState(0);
-  const [pageToSend, setPageToSend] = useState(0);
-  const [pageSizeToSend, setPageSizeToSend] = useState(10);
+  const [paginationToSend, setPaginationToSend] = useState({ page: 0, pageSize: 10 });
 
   // History
   const [leadsHistory, setLeadsHistory] = useState([]);
   const [totalLeadsHistory, setTotalLeadsHistory] = useState(0);
-  const [pageHistory, setPageHistory] = useState(0);
-  const [pageSizeHistory, setPageSizeHistory] = useState(10);
+  const [paginationHistory, setPaginationHistory] = useState({ page: 0, pageSize: 10 });
 
   // Dialog
   const [emailDialogOpen, setEmailDialogOpen] = useState(false);
@@ -42,22 +41,22 @@ export default function CampaignDetailsPage() {
   }, [campaignId]);
 
   useEffect(() => {
-    fetchLeadsToSend(pageToSend, pageSizeToSend);
-  }, [campaignId, pageToSend, pageSizeToSend]);
+    fetchLeadsToSend();
+  }, [campaignId, paginationToSend.page, paginationToSend.pageSize]);
 
   useEffect(() => {
-    fetchLeadsHistory(pageHistory, pageSizeHistory);
-  }, [campaignId, pageHistory, pageSizeHistory]);
+    fetchLeadsHistory();
+  }, [campaignId, paginationHistory.page, paginationHistory.pageSize]);
 
   async function fetchCampaign() {
     const result = await window.electronAPI.getCampaignById(campaignId);
     if (result.success) setCampaign(result.campaign.campaign);
   }
 
-  async function fetchLeadsToSend(pageArg = pageToSend, pageSizeArg = pageSizeToSend) {
+  async function fetchLeadsToSend() {
     const result = await window.electronAPI.getLeadsForCampaign(
       campaignId,
-      { statuses: ['READY'], page: pageArg + 1, pageSize: pageSizeArg }
+      { statuses: ['READY'], page: paginationToSend.page + 1, pageSize: paginationToSend.pageSize }
     );
     if (result.success) {
       setLeadsToSend(result.leads);
@@ -65,13 +64,11 @@ export default function CampaignDetailsPage() {
     }
   }
 
-  async function fetchLeadsHistory(pageArg = pageHistory, pageSizeArg = pageSizeHistory) {
-    // Fetch leads with status SENT or FAILED
+  async function fetchLeadsHistory() {
     const result = await window.electronAPI.getLeadsForCampaign(
       campaignId,
-      { statuses: ['SENT', 'FAILED'], page: pageArg + 1, pageSize: pageSizeArg }
+      { statuses: ['SENT', 'FAILED'], page: paginationHistory.page + 1, pageSize: paginationHistory.pageSize }
     );
-    console.log('Fetched leads history:', result);
     if (result.success) {
       setLeadsHistory(result.leads);
       setTotalLeadsHistory(result.total || 0);
@@ -120,6 +117,13 @@ export default function CampaignDetailsPage() {
     }
   };
 
+  // Refresh handler to reload campaign and both lead lists
+  const handleRefresh = () => {
+    fetchCampaign();
+    fetchLeadsToSend();
+    fetchLeadsHistory();
+  };
+
   // Update columns: remove actions, add tentative_send_date
   const columns = [
     { field: 'name', headerName: 'Lead Name', flex: 1 },
@@ -153,6 +157,14 @@ export default function CampaignDetailsPage() {
             {campaign?.name || 'Campaign'}
           </Typography>
           <Box sx={{ display: 'flex', gap: 2 }}>
+            <IconButton
+              aria-label="Refresh"
+              color="primary"
+              onClick={handleRefresh}
+              title="Refresh"
+            >
+              <RefreshIcon />
+            </IconButton>
             <Typography
               variant="body2"
               sx={{
@@ -241,7 +253,7 @@ export default function CampaignDetailsPage() {
       {tab === 0 && (
         <>
           <Typography variant="h6" sx={{ mb: 2 }}>Campaign Leads To Send</Typography>
-          <Box sx={{ height: 400, width: '100%', overflow: 'auto' }}>
+          <Box sx={{ width: '100%', overflow: 'auto' }}>
             <DataGrid
               rows={leadsToSend.map(lead => ({
                 id: lead.id,
@@ -253,15 +265,17 @@ export default function CampaignDetailsPage() {
                 tentative_send_date: lead.tentative_send_date ? new Date(lead.tentative_send_date.replace(' ', 'T') + 'Z').toLocaleString() || '' : '-'
               }))}
               columns={columns}
-              pageSize={pageSizeToSend}
-              rowsPerPageOptions={[10, 20, 50]}
-              rowCount={totalLeadsToSend}
               pagination
               paginationMode="server"
-              page={pageToSend}
-              onPageChange={setPageToSend}
-              onPageSizeChange={(newSize) => { setPageSizeToSend(newSize); setPageToSend(0); }}
-              autoHeight={false}
+              rowCount={totalLeadsToSend}
+              pageSize={paginationToSend.pageSize}
+              page={paginationToSend.page}
+              onPaginationModelChange={({ page, pageSize }) =>
+                setPaginationToSend({ page, pageSize })
+              }
+              rowsPerPageOptions={[10, 20, 50]}
+              disableSelectionOnClick
+              autoHeight
               sx={{
                 minWidth: 900,
                 '& .MuiDataGrid-virtualScroller': {
@@ -276,7 +290,7 @@ export default function CampaignDetailsPage() {
       {tab === 1 && (
         <>
           <Typography variant="h6" sx={{ mb: 2 }}>Campaign Leads History</Typography>
-          <Box sx={{ height: 400, width: '100%', overflow: 'auto' }}>
+          <Box sx={{ width: '100%', overflow: 'auto' }}>
             <DataGrid
               rows={leadsHistory.map(lead => ({
                 id: lead.id,
@@ -289,15 +303,17 @@ export default function CampaignDetailsPage() {
                 campaign_lead_extra: lead.campaign_lead_extra || '',
               }))}
               columns={historyColumns}
-              pageSize={pageSizeHistory}
-              rowsPerPageOptions={[10, 20, 50]}
-              rowCount={totalLeadsHistory}
               pagination
               paginationMode="server"
-              page={pageHistory}
-              onPageChange={setPageHistory}
-              onPageSizeChange={(newSize) => { setPageSizeHistory(newSize); setPageHistory(0); }}
-              autoHeight={false}
+              rowCount={totalLeadsHistory}
+              pageSize={paginationHistory.pageSize}
+              page={paginationHistory.page}
+              onPaginationModelChange={({ page, pageSize }) =>
+                setPaginationHistory({ page, pageSize })
+              }
+              rowsPerPageOptions={[10, 20, 50]}
+              disableSelectionOnClick
+              autoHeight
               sx={{
                 minWidth: 900,
                 '& .MuiDataGrid-virtualScroller': {

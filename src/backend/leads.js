@@ -83,48 +83,7 @@ function addLead(lead, callback) {
   );
 }
 
-function seedLeads(callback) {
-  const sampleLeads = [
-    {
-      name: "Acme Corp",
-      address: "123 Main St, Springfield",
-      phone: "555-1234",
-      mobile: "555-5678",
-      email: "info@acme.com",
-      contact_person: "John Doe",
-      area: "Springfield",
-      details: { industry: "Manufacturing", notes: "Top client" }
-    },
-    {
-      name: "Globex Inc",
-      address: "456 Elm St, Metropolis",
-      phone: "555-8765",
-      mobile: "555-4321",
-      email: "contact@globex.com",
-      contact_person: "Jane Smith",
-      area: "Metropolis",
-      details: { industry: "Tech", notes: "Interested in new campaign" }
-    },
-    {
-      name: "Initech",
-      address: "789 Oak St, Gotham",
-      phone: "555-2468",
-      mobile: "555-1357",
-      email: "hello@initech.com",
-      contact_person: "Peter Gibbons",
-      area: "Gotham",
-      details: { industry: "Software", notes: "Follow up next week" }
-    }
-  ];
 
-  let inserted = 0;
-  sampleLeads.forEach(lead => {
-    addLead(lead, () => {
-      inserted++;
-      if (inserted === sampleLeads.length && callback) callback();
-    });
-  });
-}
 /**
  * Get all leads with optional filters, pagination, and fuzzy search.
  * @param {Object} options - { phone, email, mobileNotNull, search, page, pageSize }
@@ -225,4 +184,20 @@ function getAllAreas(callback) {
   );
 }
 
-module.exports = { getAllLeads, addLead, seedLeads, getAllAreas };
+/**
+ * Delete a lead by id.
+ * @param {number} id
+ * @param {Function} callback
+ */
+function deleteLead(id, callback) {
+  db.run(
+    `DELETE FROM leads WHERE id = ?`,
+    [id],
+    function (err) {
+      if (err) return callback(err);
+      callback(null, { deleted: this.changes > 0 });
+    }
+  );
+}
+
+module.exports = { getAllLeads, addLead, getAllAreas, deleteLead };

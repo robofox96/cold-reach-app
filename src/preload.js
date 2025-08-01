@@ -17,4 +17,5 @@ contextBridge.exposeInMainWorld('electronAPI', {
   updateCampaignStatus: (campaignId, status) => ipcRenderer.invoke('updateCampaignStatus', campaignId, status),
   getAllLeadsForCampaignExport: (campaignId) =>
     ipcRenderer.invoke('getAllLeadsForCampaignExport', campaignId),
+  deleteLead: (leadId) => ipcRenderer.invoke('deleteLead', leadId),
 });
