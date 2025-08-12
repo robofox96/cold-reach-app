@@ -18,4 +18,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getAllLeadsForCampaignExport: (campaignId) =>
     ipcRenderer.invoke('getAllLeadsForCampaignExport', campaignId),
   deleteLead: (leadId) => ipcRenderer.invoke('deleteLead', leadId),
+  bulkUpdateCampaignLeadsFromExcel: (campaignId, leads) =>
+    ipcRenderer.invoke('bulkUpdateCampaignLeadsFromExcel', campaignId, leads),
 });

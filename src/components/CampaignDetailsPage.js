@@ -7,8 +7,9 @@ import ReplayIcon from '@mui/icons-material/Replay';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import StopIcon from '@mui/icons-material/Stop';
 import RefreshIcon from '@mui/icons-material/Refresh';
+import UploadFileIcon from '@mui/icons-material/UploadFile';
 import { useParams, useNavigate } from 'react-router-dom';
-import { exportLeadsToXLSX } from '../utils/xlsxUtils';
+import { exportLeadsToXLSX, processEditedLeadsExcel } from '../utils/xlsxUtils';
 import CircularProgress from '@mui/material/CircularProgress';
 
 export default function CampaignDetailsPage() {
@@ -35,6 +36,9 @@ export default function CampaignDetailsPage() {
 
   // Downloading state
   const [downloading, setDownloading] = useState(false);
+
+  // Upload state
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     fetchCampaign();
@@ -75,24 +79,6 @@ export default function CampaignDetailsPage() {
     }
   }
 
-  const handleShowEmail = (lead) => {
-    setSelectedLead(lead);
-    setEmailDialogOpen(true);
-  };
-
-  const handleSendEmail = async (lead) => {
-    const result = await window.electronAPI.sendCampaignLeadEmail(lead);
-    console.log('Send email result:', result);
-    if (result.success) {
-      alert(`Email sent to ${lead.email}`);
-      // Optionally refresh leads to reflect status change
-      fetchLeadsToSend();
-    } else {
-      alert(`Failed to send email: ${result.error}`);
-    }
-    setSelectedLead(null);
-  };
-
   // Add start/stop campaign logic
   const handleStartStopCampaign = async () => {
     if (!campaign) return;
@@ -122,6 +108,34 @@ export default function CampaignDetailsPage() {
     fetchCampaign();
     fetchLeadsToSend();
     fetchLeadsHistory();
+  };
+
+  // Handle file input change for uploading edited leads
+  const handleUploadEditedLeads = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      // Parse and validate the uploaded Excel
+      const { valid, error, leads } = await processEditedLeadsExcel(file);
+      if (!valid) {
+        alert(`Upload failed: ${error}`);
+        return;
+      }
+      // Send to backend for bulk update
+      const result = await window.electronAPI.bulkUpdateCampaignLeadsFromExcel(campaignId, leads);
+      if (result.success) {
+        alert('Leads updated successfully!');
+        handleRefresh();
+      } else {
+        alert(`Update failed: ${result.error || 'Unknown error'}`);
+      }
+    } catch (err) {
+      alert('Error processing file: ' + err.message);
+    } finally {
+      setUploading(false);
+      event.target.value = ''; // Reset file input
+    }
   };
 
   // Update columns: remove actions, add tentative_send_date
@@ -239,6 +253,25 @@ export default function CampaignDetailsPage() {
         >
           Download Leads (XLSX)
         </Button>
+        <label htmlFor="upload-edited-leads">
+          <input
+            id="upload-edited-leads"
+            type="file"
+            accept=".xlsx,.xls"
+            style={{ display: 'none' }}
+            onChange={handleUploadEditedLeads}
+            disabled={uploading}
+          />
+          <Button
+            variant="outlined"
+            color="secondary"
+            component="span"
+            startIcon={<UploadFileIcon />}
+            disabled={uploading}
+          >
+            {uploading ? 'Uploading...' : 'Upload Edited Leads'}
+          </Button>
+        </label>
         {downloading && (
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <CircularProgress size={24} />

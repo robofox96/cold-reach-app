@@ -302,6 +302,45 @@ function getAllLeadsForCampaignExport(campaignId, callback) {
   );
 }
 
+/**
+ * Bulk update campaign_leads from uploaded Excel.
+ * Accepts array of { campaign_id, lead_id, status, follow_up_call_date, remarks }
+ */
+function bulkUpdateCampaignLeadsFromExcel(campaignId, leads, callback) {
+  if (!Array.isArray(leads) || leads.length === 0) {
+    return callback(null, { updated: 0 });
+  }
+  db.serialize(() => {
+    db.run('BEGIN TRANSACTION');
+    const stmt = db.prepare(
+      `UPDATE campaign_leads
+       SET status = COALESCE(?, status),
+           follow_up_call_date = COALESCE(?, follow_up_call_date),
+           remarks = COALESCE(?, remarks),
+           updated_at = datetime('now')
+       WHERE campaign_id = ? AND lead_id = ?`
+    );
+    let updatedCount = 0;
+    for (const lead of leads) {
+      stmt.run(
+        lead.status || null,
+        lead.follow_up_call_date || null,
+        lead.remarks || null,
+        campaignId,
+        lead.lead_id,
+        function (err) {
+          if (!err && this.changes > 0) updatedCount += this.changes;
+        }
+      );
+    }
+    db.run('COMMIT', (err) => {
+      stmt.finalize();
+      if (err) return callback(err);
+      callback(null, { updated: updatedCount });
+    });
+  });
+}
+
 module.exports = {
   getAllCampaigns,
   addCampaign,
@@ -310,4 +349,5 @@ module.exports = {
   updateCampaignLeadStatus,
   updateCampaignStatus, // export new function
   getAllLeadsForCampaignExport,
+  bulkUpdateCampaignLeadsFromExcel,
 };
