@@ -10,8 +10,8 @@ const transporter = nodemailer.createTransport({
   port: 587,
   secure: false, // true for 465, false for other ports
   auth: {
-    user: 'robo.ai.96@gmail.com',
-    pass: 'btla aglb cjkk uqrv', // Remove this before pushing to git
+    user: 'ashacorp.indianoil@gmail.com',
+    pass: 'qgfr ctyc zoiq zpeh', // Remove this before pushing to git
   },
 });
 
@@ -35,17 +35,12 @@ const htmlBody = fs.readFileSync(
 
 function sendCampaignLeadEmail(campaign_lead, callback) {
   const mailOptions = {
-    from: 'robo.ai.96@gmail.com',
+    from: 'ashacorp.indianoil@gmail.com',
     to: campaign_lead.email,
-    // to: 'jayrajawat5@gmail.com',
     subject: 'Introduction to Asha Corporation – Your One-Stop Solution for Lubrication & Chemicals',
     html: htmlBody.replace('{{first_name|there}}', campaign_lead.contact_person ? campaign_lead.contact_person : 'Sir/Madam')
       .replace('{{company_name}}', campaign_lead.name ? campaign_lead.name : 'your company'),
     attachments: [
-      // {
-      //   filename: "Brochure.pdf",
-      //   path: path.join(staticPath, 'brochure1.pdf')
-      // },
       {
         filename: "servo2.png",
         path: path.join(staticPath, 'servo2.png'),
