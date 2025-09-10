@@ -3,6 +3,7 @@ const campaigns = require('./campaigns');
 const nodemailer = require('nodemailer');
 const path = require('path');
 const { app } = require('electron');
+const { randomUUID } = require('crypto');
 
 // Configure the email transporter
 const transporter = nodemailer.createTransport({
@@ -34,6 +35,7 @@ const htmlBody = fs.readFileSync(
 );
 
 function sendCampaignLeadEmail(campaign_lead, callback) {
+  const uuid = randomUUID();
   const mailOptions = {
     from: 'ashacorp.indianoil@gmail.com',
     to: campaign_lead.email,
@@ -51,23 +53,33 @@ function sendCampaignLeadEmail(campaign_lead, callback) {
         path: path.join(staticPath, 'servo3.png'),
         cid: "servo3@asha.com"
       }
-    ]
+    ],
+    headers: {
+      'X-CL-Campaign': String(campaign_lead.campaign_id || campaign_lead.campaignId),
+      'X-CL-Lead': String(campaign_lead.id),
+      'X-CL-UUID': uuid
+    },
+    dsn: {
+      id: uuid,
+      return: 'full',
+      notify: ['failure', 'delay']
+    }
   };
 
   transporter.sendMail(mailOptions, (err, info) => {
     let status, extra;
     if (err) {
       status = 'FAILED';
-      extra = JSON.stringify({ error: err.message });
+      extra = JSON.stringify({ error: err.message, uuid });
     } else {
       status = 'SENT';
-      extra = JSON.stringify({ info });
+      extra = JSON.stringify({ info, uuid });
     }
 
     // Use campaigns.js function to update status
     console.log(`Updating email to ${campaign_lead} - Status: ${status}`);
     campaigns.updateCampaignLeadStatus(
-      campaign_lead.campaign_id,
+      campaign_lead.campaign_id || campaign_lead.campaignId,
       campaign_lead.id,
       status,
       extra,

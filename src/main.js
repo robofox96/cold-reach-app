@@ -5,8 +5,10 @@ const leads = require('./backend/leads');
 const campaigns = require('./backend/campaigns');
 const emaiService = require('./backend/emailService');
 const { startCampaignCron } = require('./backend/cronService');
+const { startBounceWatcher } = require('./backend/bounceService');
 
 let cronStarted = false;
+let bounceStarted = false;
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 if (require('electron-squirrel-startup')) {
@@ -72,10 +74,14 @@ ipcMain.handle('login', async (event, username, password) => {
       if (err) resolve({ success: false, error: err.message });
       else if (!user) resolve({ success: false, error: 'Invalid credentials' });
       else {
-        // Start the cron only once after first successful login
+        // Start the cron and bounce watcher only once after first successful login
         if (!cronStarted) {
           startCampaignCron();
           cronStarted = true;
+        }
+        if (!bounceStarted) {
+          startBounceWatcher();
+          bounceStarted = true;
         }
         resolve({ success: true, user });
       }
