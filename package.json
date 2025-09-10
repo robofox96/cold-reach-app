@@ -46,6 +46,8 @@
     "bcryptjs": "^3.0.2",
     "electron-squirrel-startup": "^1.0.1",
     "electron-store": "^10.1.0",
+    "imapflow": "^1.0.195",
+    "mailparser": "^3.7.4",
     "nodemailer": "^7.0.5",
     "react-router-dom": "^7.7.0",
     "sqlite3": "^5.1.7",
